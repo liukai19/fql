@@ -79,6 +79,9 @@ func (p *Parser) Parse() error {
 func (p *Parser) output() {
 	title := []string{}
 	for _,f := range p.Syntax.Fields.Value{
+		if false == f.IsShow {
+			continue
+		}
 		title = append(title, f.Remark)
 	}
 	fmt.Println(strings.Join(title, " | "))

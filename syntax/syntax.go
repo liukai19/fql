@@ -32,8 +32,8 @@ const (
 )
 
 var ExpsMap = []string{
-	EXPS_NE,
 	EXPS_GTE,
+	EXPS_NE,
 	EXPS_LTE,
 	EXPS_NOTIN,
 	EXPS_IN,
@@ -78,6 +78,7 @@ type Fields struct {
 type Field struct {
 	Name   string
 	Remark string
+	IsShow bool
 }
 
 type Where struct {
@@ -117,7 +118,9 @@ func ParseFields(str string) (*Fields, error) {
 	}
 	eles := []*Field{}
 	for _, e := range ele {
-		f := &Field{}
+		f := &Field{
+			IsShow: true,
+		}
 		e = strings.ToUpper(e)
 		if -1 != strings.Index(e, "AS") {
 			e2 := strings.Split(e, "AS")
@@ -220,6 +223,7 @@ func ParseOrder(str string) (*OrderBy, error) {
 	o.Field = &Field{
 		Name:   e,
 		Remark: e,
+		IsShow: false,
 	}
 	return o, nil
 }
@@ -282,6 +286,7 @@ func ParseWhere(str string) (*Where, error) {
 			c.Field = &Field{
 				Name:   condsVal[0],
 				Remark: condsVal[0],
+				IsShow: false,
 			}
 			c.ItemValue = condsVal[1]
 		}
@@ -291,6 +296,7 @@ func ParseWhere(str string) (*Where, error) {
 			c.Field = &Field{
 				Name:   condsVal[0],
 				Remark: condsVal[0],
+				IsShow: false,
 			}
 			condsVal[1] = strings.Replace(condsVal[1], "(", "", -1)
 			condsVal[1] = strings.Replace(condsVal[1], ")", "", -1)
@@ -324,16 +330,19 @@ func eleVerify(e string) bool {
 }
 
 func (f *Fields) AddIndexField(num int) {
+	allShow := false
 	for i, v := range f.Value {
 		if v.Name == "*" {
 			f.Value = append(f.Value[:i], f.Value[i+1:]...)
-			for ni := 1; ni <= num; ni++ {
-				f.Value = append(f.Value, &Field{
-					Name:   fmt.Sprintf("%s%d", FIELD_PRXFIX, ni),
-					Remark: fmt.Sprintf("%s%d", FIELD_PRXFIX, ni),
-				})
-			}
+			allShow = true
 			break
 		}
+	}
+	for ni := 1; ni <= num; ni++ {
+		f.Value = append(f.Value, &Field{
+			Name:   fmt.Sprintf("%s%d", FIELD_PRXFIX, ni),
+			Remark: fmt.Sprintf("%s%d", FIELD_PRXFIX, ni),
+			IsShow: allShow,
+		})
 	}
 }

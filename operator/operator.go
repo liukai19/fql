@@ -19,8 +19,25 @@ type Oper struct {
 	GroupData map[string][]map[string]string
 }
 
+var processField = map[string]int{}
+
+var outputField = map[string]bool{}
+
 func (o *Oper) Process() {
-	o.Source().GroupBy().Field().AfterWhere().OrderBy().Limit()
+	o.Source().GroupBy().Field().AfterWhere().OrderBy().Limit().Output()
+}
+
+func (o *Oper) Output() {
+	// 屏蔽 IsShow === false的列
+	if len(o.Data) > 0{
+		for i,v := range o.Data{
+			for f,_ := range v{
+				if false == outputField[f] {
+					delete(o.Data[i], f)
+				}
+			}
+		}
+	}
 }
 
 func (o *Oper) Limit() *Oper {
@@ -57,7 +74,12 @@ func (o *Oper) Field() *Oper {
 func (o *Oper) setSxtractByField(data []map[string]string) []map[string]string {
 	fRet := map[string][]string{}
 	for _, i := range o.Syntax.Fields.Value {
-		fRet[i.Remark] = fieldProcess(i, data)
+		fRet[i.Remark] = fieldProcess(i.Name, data)
+	}
+	for f, _ := range processField {
+		if _,ok := fRet[f];ok!=true{
+			fRet[f] = fieldProcess(f, data)
+		}
 	}
 	r := []map[string]string{}
 	for i := 0; i < len(data); i++ {
@@ -65,6 +87,7 @@ func (o *Oper) setSxtractByField(data []map[string]string) []map[string]string {
 		// 如果有字段都为 null 那么不输出该行
 		flag := 0
 		for _, f := range o.Syntax.Fields.Value {
+			outputField[f.Remark] = f.IsShow
 			if i >= len(fRet[f.Remark]) {
 				item[f.Remark] = "NULL"
 				flag++
@@ -79,13 +102,13 @@ func (o *Oper) setSxtractByField(data []map[string]string) []map[string]string {
 	return r
 }
 
-func fieldProcess(i *syntax.Field, source []map[string]string) []string {
+func fieldProcess(name string, source []map[string]string) []string {
 	if len(source) <= 0 {
 		return nil
 	}
 	fc := &Fc{
 		Name:    "Common",
-		Content: i.Name,
+		Content: name,
 	}
 	// 字段函数解析
 	fc.parseFunc()
@@ -97,6 +120,7 @@ func fieldProcess(i *syntax.Field, source []map[string]string) []string {
 		f = f.Value
 	}
 	fcList = append(fcList, fc)
+	// 反转
 	for i, j := 0, len(fcList)-1; i < j; i, j = i+1, j-1 {
 		fcList[i], fcList[j] = fcList[j], fcList[i]
 	}
@@ -171,7 +195,7 @@ func (o *Oper) GroupBy() *Oper {
 	return o
 }
 
-func (o *Oper) AfterWhere() *Oper{
+func (o *Oper) AfterWhere() *Oper {
 	if o.Syntax.Where == nil {
 		return o
 	}
@@ -181,11 +205,10 @@ func (o *Oper) AfterWhere() *Oper{
 	return o
 }
 
-func(o *Oper) filterByMap(data []map[string]string) []map[string]string{
+func (o *Oper) filterByMap(data []map[string]string) []map[string]string {
 	if len(o.Syntax.Where.Conds) > 0 {
-
 		dataRet := []map[string]string{}
-		for _,line := range data {
+		for _, line := range data {
 			condRet := 0
 			for _, v := range o.Syntax.Where.Conds {
 				d := line[v.Field.Remark]
@@ -211,7 +234,6 @@ func(o *Oper) filterByMap(data []map[string]string) []map[string]string{
 					}
 				}
 			}
-
 			if syntax.RELATION_AND == o.Syntax.Where.Relation {
 				if condRet == len(o.Syntax.Where.Conds) {
 					//data = append(data[:i], data[i+1:]...)
@@ -237,10 +259,10 @@ func (o *Oper) BeforeWhere(data []string) bool {
 	if len(o.Syntax.Where.Conds) > 0 {
 		condRet := 0
 		for _, v := range o.Syntax.Where.Conds {
-			d,err := getEleFromLine(v.Field.Name, data)
+			d, err := getEleFromLine(v.Field.Name, data)
 			// 非@N 格式字段容错
 			if err != nil {
-				condRet+=1
+				condRet += 1
 				continue
 			}
 			if len(v.SetValue) > 0 {
@@ -284,6 +306,8 @@ func (o *Oper) BeforeWhere(data []string) bool {
 }
 
 func (o *Oper) Source() *Oper {
+	//parse.GetInstance("aaa", " ")
+	//manager.Do("", "")
 	f, err := os.Open(o.Syntax.Source.FilePath)
 	if err != nil {
 		panic(err)
@@ -292,7 +316,7 @@ func (o *Oper) Source() *Oper {
 	rd := bufio.NewReader(f)
 	o.Data = []map[string]string{}
 	// 只保留 Syntax 中出现的字段
-	readFields := o.extractField()
+	processField = o.extractField()
 	// 处理"*" case 标识 只处理一次
 	allFieldFlag := false
 	for {
@@ -310,18 +334,16 @@ func (o *Oper) Source() *Oper {
 			o.Syntax.Fields.AddIndexField(len(sline))
 			allFieldFlag = true
 			//  处理完"*"后 重新 计算Syntax 中出现的字段
-			readFields = o.extractField()
-			if len(readFields) <= 0 {
+			processField = o.extractField()
+			if len(processField) <= 0 {
 				panic("Not Found Read Fields")
 			}
 		}
-
 		// 只保留 Syntax 中出现的字段
 		mline := map[string]string{}
-		for f, _ := range readFields {
-			mline[f],_ = getEleFromLine(f, sline)
+		for f, _ := range processField {
+			mline[f], _ = getEleFromLine(f, sline)
 		}
-
 		o.Data = append(o.Data, mline)
 	}
 	return o
@@ -357,6 +379,15 @@ func (o *Oper) extractField() map[string]int {
 		}
 	}
 
+	if o.Syntax.Where != nil {
+		for _, v := range o.Syntax.Where.Conds {
+			if fs := regFieldFiliter(v.Field.Name); len(fs) > 0 {
+				for _, f := range fs {
+					uniqueField[f] = 1
+				}
+			}
+		}
+	}
 	return uniqueField
 }
 
@@ -436,7 +467,7 @@ func itemFiliter(d1 string, d2 string, exps string) bool {
 	return false
 }
 
-func getEleFromLine(si string, data []string) (string,error) {
+func getEleFromLine(si string, data []string) (string, error) {
 	si = strings.Replace(si, syntax.FIELD_PRXFIX, "", -1)
 	i, err := strconv.Atoi(si)
 	if err != nil {
