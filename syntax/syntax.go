@@ -339,10 +339,27 @@ func (f *Fields) AddIndexField(num int) {
 		}
 	}
 	for ni := 1; ni <= num; ni++ {
-		f.Value = append(f.Value, &Field{
-			Name:   fmt.Sprintf("%s%d", FIELD_PRXFIX, ni),
-			Remark: fmt.Sprintf("%s%d", FIELD_PRXFIX, ni),
-			IsShow: allShow,
-		})
+		if false == allShow {
+			isShow := false
+			for _, v := range f.Value {
+				if v.Name == fmt.Sprintf("%s%d", FIELD_PRXFIX, ni) {
+					isShow = true
+					break
+				}
+			}
+			if false == isShow {
+				f.Value = append(f.Value, &Field{
+					Name:   fmt.Sprintf("%s%d", FIELD_PRXFIX, ni),
+					Remark: fmt.Sprintf("%s%d", FIELD_PRXFIX, ni),
+					IsShow: isShow,
+				})
+			}
+		} else {
+			f.Value = append(f.Value, &Field{
+				Name:   fmt.Sprintf("%s%d", FIELD_PRXFIX, ni),
+				Remark: fmt.Sprintf("%s%d", FIELD_PRXFIX, ni),
+				IsShow: allShow,
+			})
+		}
 	}
 }

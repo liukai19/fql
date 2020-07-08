@@ -19,7 +19,7 @@ var (
 	FUNC_COUNT          = regexp.MustCompile(`^COUNT\((.*?)\)$`)
 	FUNC_DISTINCT       = regexp.MustCompile(`^DISTINCT\((.*?)\)$`)
 	FUNC_SUM            = regexp.MustCompile(`^SUM\((.*?)\)$`)
-	FUNC_MAX            = regexp.MustCompile(`^AX\((.*?)\)$`)
+	FUNC_MAX            = regexp.MustCompile(`^MAX\((.*?)\)$`)
 	FUNC_MIN            = regexp.MustCompile(`^MIN\((.*?)\)$`)
 	FUNC_AVG            = regexp.MustCompile(`^AVG\((.*?)\)$`)
 	FUNC_FROM_UNIXTIME  = regexp.MustCompile(`^FROM_UNIXTIME\((.*?)\)$`)
@@ -56,6 +56,7 @@ var timeTempMap = map[string]string{
 
 const (
 	MAX_UINT64 = ^uint64(0)
+	MIN_UINT64 = uint64(0)
 	EXT_DECHAR = "::"
 )
 
@@ -122,35 +123,37 @@ func timeFormatMap(template string) string {
 	return template
 }
 
-func (f *Fc) _avg(data []string) uint64 {
-	ret := uint64(0)
+func (f *Fc) _avg(data []string) float64 {
+	ret := float64(0)
 	for _, v := range data {
-		intNum, _ := strconv.Atoi(v)
-		int64Num := uint64(intNum)
-		ret += int64Num
+		//intNum, _ := strconv.Atoi(v)
+		//int64Num := uint64(intNum)
+		float64Num, _ := strconv.ParseFloat(v, 64)
+		//float64Num, _ = strconv.ParseFloat(fmt.Sprintf("%.10f", float64Num), 64)
+		ret += float64Num
 	}
-	return ret / uint64(len(data))
+	return ret / float64(len(data))
 }
 
-func (f *Fc) _min(data []string) uint64 {
-	ret := MAX_UINT64
+func (f *Fc) _min(data []string) float64 {
+	ret := float64(MAX_UINT64)
 	for _, v := range data {
-		intNum, _ := strconv.Atoi(v)
-		int64Num := uint64(intNum)
-		if int64Num < ret {
-			ret = int64Num
+		float64Num, _ := strconv.ParseFloat(v, 64)
+		//float64Num, _ = strconv.ParseFloat(fmt.Sprintf("%.2f", float64Num), 64)
+		if float64Num < ret {
+			ret = float64Num
 		}
 	}
 	return ret
 }
 
-func (f *Fc) _max(data []string) uint64 {
-	ret := uint64(0)
+func (f *Fc) _max(data []string) float64 {
+	ret := float64(MIN_UINT64)
 	for _, v := range data {
-		intNum, _ := strconv.Atoi(v)
-		int64Num := uint64(intNum)
-		if int64Num > ret {
-			ret = int64Num
+		float64Num, _ := strconv.ParseFloat(v, 64)
+		//float64Num, _ = strconv.ParseFloat(fmt.Sprintf("%.2f", float64Num), 64)
+		if float64Num > ret {
+			ret = float64Num
 		}
 	}
 	return ret
@@ -160,14 +163,15 @@ func (f *Fc) _count(data []string) int64 {
 	return int64(len(data))
 }
 
-func (f *Fc) _sum(data []string) int64 {
-	ret := int64(0)
+func (f *Fc) _sum(data []string) float64 {
+	ret := float64(0)
 	for _, v := range data {
-		int64, err := strconv.ParseInt(v, 10, 64)
+		//int64, err := strconv.ParseInt(v, 10, 64)
+		float64Num, err := strconv.ParseFloat(v, 64)
 		if err != nil {
-			int64 = 0
+			float64Num = 0
 		}
-		ret += int64
+		ret += float64Num
 	}
 	return ret
 }

@@ -3,6 +3,7 @@ package operator
 import (
 	"bufio"
 	"errors"
+	"fmt"
 	"fql/syntax"
 	"fql/util"
 	"io"
@@ -68,6 +69,7 @@ func (o *Oper) Field() *Oper {
 			o.Data = append(o.Data, r...)
 		}
 	}
+
 	return o
 }
 
@@ -136,22 +138,29 @@ func fieldProcess(name string, source []map[string]string) []string {
 		case "DISTINCT":
 			data = v._distinct(data)
 			break
+		case "AVG":
+			r := v._avg(data)
+			data = []string{}
+			//data = append(data, strconv.FormatFloat(r, 'E', -1, 64))
+			data = append(data,  fmt.Sprintf("%.2f", r))
+			//data = nil
+			break
 		case "SUM":
 			r := v._sum(data)
 			data = []string{}
-			data = append(data, strconv.Itoa(int(r)))
+			data = append(data, fmt.Sprintf("%.2f", r))
 			//data = nil
 			break
 		case "MAX":
 			r := v._max(data)
 			data = []string{}
-			data = append(data, strconv.Itoa(int(r)))
+			data = append(data, fmt.Sprintf("%.2f", r))
 			//data = nil
 			break
 		case "MIN":
 			r := v._min(data)
 			data = []string{}
-			data = append(data, strconv.Itoa(int(r)))
+			data = append(data, fmt.Sprintf("%.2f", r))
 			//data = nil
 			break
 		case "FROM_UNIXTIME":
